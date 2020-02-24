@@ -63,6 +63,11 @@
         (ptr ? container_of(ptr, type, member) : NULL)
 #endif
 
+#ifndef SIGN
+#   define SIGN(__N)        ((int)((int)((int)(__N) > 0) - (int)((int)(__N) < 0)))
+#endif
+#undef sign
+#define sign(__n)           SIGN(__n)
 
 #define ABS(__NUM)          (((__NUM) < 0) ? (-(__NUM)) : (__NUM))
 
@@ -144,7 +149,7 @@ typedef volatile uint8_t     reg8_t;
 typedef volatile uint16_t    reg16_t;
 typedef volatile uint32_t    reg32_t;
 
-#if     __IS_COMPILER_IAR__                                                     \
+#if (defined(__IS_COMPILER_IAR__) && __IS_COMPILER_IAR__)                       \
     ||  (!defined(__STDC_VERSION__) || __STDC_VERSION__ < 199901L)
 
 #undef ____RESERVED

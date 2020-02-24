@@ -81,7 +81,8 @@
 #define __vsf_pt_begin(__state)     __vsf_pt_begin_common(__state)
 
 
-#define vsf_pt_begin()              __vsf_pt_begin(__vsf_pt_state())
+#define vsf_pt_begin()              UNUSED_PARAM(evt);                          \
+                                    __vsf_pt_begin(__vsf_pt_state())
 
 #define vsf_pt_end()                __vsf_pt_end()
 
@@ -141,7 +142,7 @@
 
 #if VSF_KERNEL_CFG_EDA_SUPPORT_FSM == ENABLED
 #   define __vsf_pt_call_fsm(__NAME, __TARGET)                                  \
-            vsf_eda_call_fsm(   (vsf_fsm_entry_t)(__NAME),                      \
+            __vsf_eda_call_fsm(   (vsf_fsm_entry_t)(__NAME),                      \
                                 (uintptr_t)(__TARGET))
 
 

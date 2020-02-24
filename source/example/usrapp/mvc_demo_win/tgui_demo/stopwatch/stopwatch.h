@@ -25,46 +25,51 @@
 /*============================ MACROS ========================================*/
 /*============================ MACROFIED FUNCTIONS ===========================*/
 /*============================ TYPES =========================================*/
-
+#if 0
 declare_vsf_pt(tgui_demo_t)
 def_vsf_pt(tgui_demo_t,
     def_params(
-        bool bWaitforRefresh;
     )
 )
 end_def_vsf_pt(tgui_demo_t)
-
+#endif
 
 declare_tgui_panel(stopwatch_t)
 
 def_tgui_panel(stopwatch_t,
     tgui_contains(
-        vsf_tgui_label_t     time;
-        vsf_tgui_button_t    start_stop;
-        vsf_tgui_button_t    lap;
-        vsf_tgui_button_t    Setting;
+        vsf_tgui_label_t     tTime;
+        vsf_tgui_button_t    tStartStop;
+        vsf_tgui_button_t    tLap;
+        vsf_tgui_button_t    tSetting;
 
-        use_tgui_container(vcontainer, 
-            tgui_contains(
-                vsf_tgui_label_t     history;
-                vsf_tgui_button_t    button1;
-                vsf_tgui_button_t    button2;
+        use_tgui_container(tContainerA,
+            use_tgui_list(tVContainer,
+                tgui_contains(
+                
+                    vsf_tgui_button_t    tButton1;
+                    vsf_tgui_button_t    tButton2;
 
-                use_tgui_container(hcontainer,
-                    tgui_contains(
-                        vsf_tgui_button_t    buttonA;
-                        vsf_tgui_button_t    buttonB;
-                        vsf_tgui_button_t    buttonC;
+                    use_tgui_list(tHContainer,
+                        tgui_contains(
+                            vsf_tgui_button_t    tButtonA;
+                            vsf_tgui_button_t    tButtonB;
+                            vsf_tgui_button_t    tButtonC;
+                        )
                     )
+
+                    vsf_tgui_label_t     tHistory;
                 )
             )
+            vsf_tgui_text_list_t  tNumberList;
         )
+
+        vsf_tgui_timer_t tTimer;
 	))
 
-    uint32_t    cnt;
-    char        chTimeBuffer[sizeof("00:00")];
+    char        chTimeBuffer[sizeof("00:00:00")];
 
-    tgui_demo_t task;
+    //tgui_demo_t tTask;
 
 end_def_tgui_panel(stopwatch_t)
 

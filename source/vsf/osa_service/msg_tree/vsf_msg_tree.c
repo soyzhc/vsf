@@ -62,7 +62,7 @@ const vsf_msgt_node_t* vsf_msgt_get_next_node_within_container(const vsf_msgt_no
             break;
         }
         //! point to next node with offset 
-        ptNode = (vsf_msgt_node_t*)((intptr_t)ptNode + ptNode->Offset.iNext);
+        ptNode = (vsf_msgt_node_t*)((intptr_t)ptNode + (intptr_t)(ptNode->Offset.iNext));
     } while(0);
     return ptNode;
 }
@@ -130,6 +130,12 @@ const vsf_msgt_node_t * vsf_msgt_shoot_top_node(  vsf_msgt_t* ptObj,
 
     do {
         if (NULL == ptRoot) {
+            break;
+        }
+
+        if (!__msgt_check_status(   ptObj, 
+                                    ptRoot,
+                                    VSF_MSGT_NODE_VALID)) {
             break;
         }
 
@@ -211,14 +217,14 @@ const vsf_msgt_node_t * vsf_msgt_shoot_node(  vsf_msgt_t* ptObj,
  * Message Handing                                                            *
  *----------------------------------------------------------------------------*/
 
-void __vsf_msg_handling_init(   __vsf_msgt_msg_handling_fsm_t* ptFSM,
+static void __vsf_msg_handling_init(   __vsf_msgt_msg_handling_fsm_t* ptFSM,
                                 vsf_msgt_t* ptObj,
                                 vsf_msgt_msg_t* ptMessage,
-                                bool bIgnoreStatus)
+                                uint_fast8_t chStatusMask)
 {
     ptFSM->chState = 0;
     ptFSM->ptMessage = ptMessage;
-    ptFSM->bIgnoreStatus = bIgnoreStatus;
+    ptFSM->chStatusMask = chStatusMask;
 }
 
 #undef THIS_FSM_STATE
@@ -245,7 +251,7 @@ fsm_rt_t __vsf_msg_handling(__vsf_msgt_msg_handling_fsm_t *ptFSM,
 
     switch (THIS_FSM_STATE) {
         case START:
-            if (ptFSM->bIgnoreStatus) {
+            if (0 == ptFSM->chStatusMask) {
                 THIS_FSM_STATE = GET_HANDLER;
                 break;
             } else {
@@ -258,35 +264,15 @@ fsm_rt_t __vsf_msg_handling(__vsf_msgt_msg_handling_fsm_t *ptFSM,
                 RESET_MSGT_HANDLING_FSM();
                 return fsm_rt_err;
             } else {
-            #if 0
-                vsf_msgt_method_status_t* fnStatus = NULL;
-
-                uint_fast8_t chID = ptNode->chID;
-                if (chID < 2) {
-                    fnStatus = c_tRootNodes[chID].Status;
-                } else {
-                    chID -= 2;
-                    fnStatus = this.NodeTypes.ptInterfaces[chID].Status;
-                }
-
-                if (NULL != fnStatus) {
-                    //!< get status
-                    vsf_msgt_node_status_t tStatus = (*fnStatus)((vsf_msgt_node_t *)ptNode);
-                    if ((VSF_MSGT_NODE_VALID | VSF_MSGT_NODE_ENABLED) != (tStatus & (VSF_MSGT_NODE_VALID | VSF_MSGT_NODE_ENABLED))) {
-                        //! not valid or enabled
-                        RESET_MSGT_HANDLING_FSM();
-                        return fsm_rt_err;
-                    }
-                }
-            #else
                 if (!__msgt_check_status(   ptObj, 
                                             ptNode, 
-                                            (VSF_MSGT_NODE_VALID | VSF_MSGT_NODE_ENABLED))) {
+                                            //(VSF_MSGT_NODE_VALID | VSF_MSGT_NODE_ENABLED)
+                                            ptFSM->chStatusMask
+                                            )) {
                     //! not valid or enabled
                     RESET_MSGT_HANDLING_FSM();
                     return fsm_rt_err;
                 }
-            #endif
                 THIS_FSM_STATE = GET_HANDLER;
             }
             //break;
@@ -306,7 +292,7 @@ fsm_rt_t __vsf_msg_handling(__vsf_msgt_msg_handling_fsm_t *ptFSM,
             }
             ptFSM->ptHandler = ptHandler;
 
-            switch (ptHandler->tType) {
+            switch (ptHandler->u2Type) {
                 case VSF_MSGT_NODE_HANDLER_TYPE_FSM:
                     THIS_FSM_STATE = HANDLE_FSM;
                     break;
@@ -397,7 +383,10 @@ fsm_rt_t vsf_msgt_backward_propagate_msg(   vsf_msgt_t* ptObj,
             if (this.NodeTypes.chTypeNumbers > 0 && NULL == this.NodeTypes.ptInterfaces) {
                 return (fsm_rt_t)VSF_ERR_INVALID_PARAMETER;
             }
-            __vsf_msg_handling_init(&this.BW.tMSGHandling, ptObj, ptMessage, false);
+            __vsf_msg_handling_init(&this.BW.tMSGHandling, 
+                                    ptObj, 
+                                    ptMessage, 
+                                    (VSF_MSGT_NODE_VALID | VSF_MSGT_NODE_ENABLED));
             THIS_FSM_STATE++;
             //break;
 
@@ -421,7 +410,8 @@ fsm_rt_t vsf_msgt_backward_propagate_msg(   vsf_msgt_t* ptObj,
                 RESET_MSGT_BACKWARD_PROPAGATE_MSG_FSM();
                 return (fsm_rt_t)VSF_MSGT_ERR_MSG_NOT_HANDLED;
             }
-            this.BW.tMSGHandling.ptNode = this.BW.tMSGHandling.ptNode->ptParent;
+            this.BW.tMSGHandling.ptNode = 
+                (const vsf_msgt_node_t *)this.BW.tMSGHandling.ptNode->ptParent;
             THIS_FSM_STATE = MSG_HANDLING;
             break;
     }
@@ -430,17 +420,138 @@ fsm_rt_t vsf_msgt_backward_propagate_msg(   vsf_msgt_t* ptObj,
     return fsm_rt_on_going;
 }
 
+const vsf_msgt_node_t *vsf_msgt_backward_propagate_msg_get_last_node(
+                                                            vsf_msgt_t* ptObj)
+{
+    class_internal(ptObj, ptThis, vsf_msgt_t);
+    VSF_OSA_SERVICE_ASSERT(NULL != ptObj);
+    
+    return this.BW.tMSGHandling.ptNode;
+}
+
 /*----------------------------------------------------------------------------*
  * Forward Message Propagation using DFS algorithm                            *
  *----------------------------------------------------------------------------*/
 
-fsm_rt_t vsf_msgt_forward_propagate_msg_dfs(vsf_msgt_t* ptObj,
-                                        vsf_msgt_node_t* ptNode,
-                                        vsf_msgt_msg_t* ptMessage)
+SECTION(".text.vsf.osa_service.msg_tree.vsf_msgt_forward_propagate_msg_dfs")
+void vsf_msgt_forward_propagate_msg_dfs_init(vsf_msgt_t* ptObj)
 {
-    class_internal(&ptObj, ptThis, vsf_msgt_t);
+    class_internal(ptObj, ptThis, vsf_msgt_t);
+    VSF_OSA_SERVICE_ASSERT(NULL != ptObj);
 
-    //! todo
+    this.FWDFS.chState = 0;
+}
+
+#undef THIS_FSM_STATE
+#define THIS_FSM_STATE  this.FWDFS.chState
+
+#define RESET_MSGT_FW_DFS_PROPAGATE_MSG_FSM()                                   \
+        do { THIS_FSM_STATE = 0; } while(0)
+
+SECTION(".text.vsf.osa_service.msg_tree.vsf_msgt_forward_propagate_msg_dfs")
+fsm_rt_t vsf_msgt_forward_propagate_msg_dfs(vsf_msgt_t* ptObj,
+                                            const vsf_msgt_node_t* ptRoot,
+                                            vsf_msgt_msg_t* ptMessage)
+{
+    enum {
+        START = 0,
+        FETCH_DEEPEST_ITEM,
+        VISIT_ITEM,
+        FETCH_NEXT_ITEM,
+        VISIT_THE_ENTRY_NODE,
+    };
+    fsm_rt_t tfsm = fsm_rt_on_going;
+    class_internal(ptObj, ptThis, vsf_msgt_t);
+
+    VSF_OSA_SERVICE_ASSERT(NULL != ptObj);
+    VSF_OSA_SERVICE_ASSERT(NULL != ptMessage);
+
+    switch (THIS_FSM_STATE) {
+        case START:
+            if (NULL == ptRoot) {
+                return (fsm_rt_t)VSF_ERR_INVALID_PTR;
+            }
+            if (    (this.NodeTypes.chTypeNumbers > 0) 
+                &&  (NULL == this.NodeTypes.ptInterfaces)) {
+                return (fsm_rt_t)VSF_ERR_INVALID_PARAMETER;
+            }
+            this.FWDFS.tMSGHandling.ptNode = ptRoot;
+
+            __vsf_msg_handling_init(&this.FWDFS.tMSGHandling, 
+                                    ptObj, 
+                                    ptMessage, 
+                                    (VSF_MSGT_NODE_VALID | VSF_MSGT_NODE_ENABLED));
+
+            THIS_FSM_STATE++;
+            // break;
+
+        case FETCH_DEEPEST_ITEM: {
+                const vsf_msgt_container_t* ptItem = 
+                    (const vsf_msgt_container_t *)this.FWDFS.tMSGHandling.ptNode;
+
+                do {
+                    if (!ptItem->use_as__vsf_msgt_node_t.tAttribute._.bIsContainer) {
+                        break;
+                    } else if (NULL == ptItem->ptNode) {
+                        //! this is an empty container
+                        break;
+                    } else {
+                        ptItem = (const vsf_msgt_container_t*)ptItem->ptNode;
+                    }
+                } while(true);
+
+                this.FWDFS.tMSGHandling.ptNode = (const vsf_msgt_node_t *)ptItem;
+                THIS_FSM_STATE = VISIT_ITEM;
+                //break;
+            }
+
+        case VISIT_ITEM:
+            tfsm = __vsf_msg_handling(  &this.FWDFS.tMSGHandling, 
+                                        ptObj, 
+                                        this.FWDFS.tMSGHandling.ptNode);
+            if (    tfsm < 0 
+                ||  fsm_rt_cpl == tfsm) {
+                THIS_FSM_STATE = FETCH_NEXT_ITEM;
+                break;
+            } 
+            return tfsm;
+            
+            //break;
+    
+        case FETCH_NEXT_ITEM: {
+                const vsf_msgt_node_t* ptItem = this.FWDFS.tMSGHandling.ptNode;
+                const vsf_msgt_node_t* ptTemp = NULL;
+                if (ptItem == ptRoot) {
+                    //! visited the entry node
+                    RESET_MSGT_FW_DFS_PROPAGATE_MSG_FSM();
+                    return fsm_rt_cpl;
+                }
+                do {
+                    ptTemp = vsf_msgt_get_next_node_within_container(ptItem);
+                    if (NULL != ptTemp) {
+                        ptItem = ptTemp;
+                        THIS_FSM_STATE = FETCH_DEEPEST_ITEM;
+                        break;
+                    } 
+                    //! it is the last item in the container
+                    ptItem = (const vsf_msgt_node_t*)ptItem->ptParent;
+
+                    if (NULL == ptItem) {
+                        //! it is the top container
+                        RESET_MSGT_FW_DFS_PROPAGATE_MSG_FSM();
+                        return fsm_rt_cpl;
+                    } /*else if (ptItem == ptRoot) {
+                        //! it is the last item
+                        THIS_FSM_STATE = VISIT_ITEM;
+                        break;
+                    } */
+                    THIS_FSM_STATE = VISIT_ITEM;
+                } while(0);
+
+                this.FWDFS.tMSGHandling.ptNode = ptItem;
+                break;
+            }
+    }
 
     return fsm_rt_on_going;
 }
@@ -460,7 +571,7 @@ void vsf_msgt_forward_propagate_msg_bfs_init(   vsf_msgt_t* ptObj,
     VSF_OSA_SERVICE_ASSERT(hwBuffSize > 2);
 
     this.FWBFS.chState = 0;
-    VSF_RNG_BUF_PREPARE(__bfs_node_fifo_t, 
+    vsf_rng_buf_prepare(__bfs_node_fifo_t, 
                         &(this.FWBFS.tFIFO), 
                         phwFIFOBuffer, 
                         hwBuffSize);
@@ -475,7 +586,8 @@ void vsf_msgt_forward_propagate_msg_bfs_init(   vsf_msgt_t* ptObj,
 SECTION(".text.vsf.osa_service.msg_tree.vsf_msgt_forward_propagate_msg_bfs")
 fsm_rt_t vsf_msgt_forward_propagate_msg_bfs(vsf_msgt_t* ptObj,
                                             const vsf_msgt_node_t* ptNode,
-                                            vsf_msgt_msg_t* ptMessage)
+                                            vsf_msgt_msg_t* ptMessage,
+                                            uint_fast8_t chStatusMask)
 {
     enum {
         START = 0,
@@ -485,8 +597,6 @@ fsm_rt_t vsf_msgt_forward_propagate_msg_bfs(vsf_msgt_t* ptObj,
     fsm_rt_t tfsm = fsm_rt_on_going;
     uint16_t hwOffset = 0;
     class_internal(ptObj, ptThis, vsf_msgt_t);
-    
-    //vsf_msgt_node_t *ptItem = NULL;
 
     VSF_OSA_SERVICE_ASSERT(NULL != ptObj);
     VSF_OSA_SERVICE_ASSERT(NULL != ptMessage);
@@ -502,7 +612,7 @@ fsm_rt_t vsf_msgt_forward_propagate_msg_bfs(vsf_msgt_t* ptObj,
             }
             VSF_OSA_SERVICE_ASSERT (NULL != this.FWBFS.tFIFO.ptBuffer);
 
-            if (!VSF_RNG_BUF_SEND_ONE(  __bfs_node_fifo_t, 
+            if (!vsf_rng_buf_send_one(  __bfs_node_fifo_t, 
                                         &(this.FWBFS.tFIFO), 
                                         0)) {
                 return (fsm_rt_t)VSF_ERR_PROVIDED_RESOURCE_NOT_SUFFICIENT;
@@ -511,12 +621,12 @@ fsm_rt_t vsf_msgt_forward_propagate_msg_bfs(vsf_msgt_t* ptObj,
             __vsf_msg_handling_init(&this.FWBFS.tMSGHandling, 
                                     ptObj, 
                                     ptMessage, 
-                                    true);
+                                    chStatusMask);
             THIS_FSM_STATE ++;
             // break;
 
         case FETCH_ITEM:
-            if (!VSF_RNG_BUF_GET_ONE(   __bfs_node_fifo_t, 
+            if (!vsf_rng_buf_get_one(   __bfs_node_fifo_t, 
                                         &(this.FWBFS.tFIFO), 
                                         &hwOffset)) {
                 //! search complete
@@ -536,8 +646,9 @@ fsm_rt_t vsf_msgt_forward_propagate_msg_bfs(vsf_msgt_t* ptObj,
             if (    tfsm < 0 
                 ||  fsm_rt_cpl == tfsm) {
                 THIS_FSM_STATE = FETCH_ITEM;
-
-                if (this.FWBFS.tMSGHandling.ptNode->tAttribute._.bIsContainer) {
+                
+                if (    this.FWBFS.tMSGHandling.ptNode->tAttribute._.bIsContainer 
+                    &&  tfsm == fsm_rt_cpl) {
                     //! add nodes to fifo
                     vsf_msgt_container_t* ptContainer = 
                         (vsf_msgt_container_t*)this.FWBFS.tMSGHandling.ptNode;
@@ -549,7 +660,7 @@ fsm_rt_t vsf_msgt_forward_propagate_msg_bfs(vsf_msgt_t* ptObj,
                         hwOffset = 
                             (uint16_t)((uintptr_t)ptTemp 
                                      - (uintptr_t)ptNode /*this.FWBFS.tMSGHandling.ptNode*/);
-                        if (!VSF_RNG_BUF_SEND_ONE(  __bfs_node_fifo_t, 
+                        if (!vsf_rng_buf_send_one(  __bfs_node_fifo_t, 
                                                     &(this.FWBFS.tFIFO), 
                                                     hwOffset)) {
                             RESET_MSGT_FW_BFS_PROPAGATE_MSG_FSM();
@@ -567,7 +678,8 @@ fsm_rt_t vsf_msgt_forward_propagate_msg_bfs(vsf_msgt_t* ptObj,
                 //! visit parent is requrested
                 const vsf_msgt_node_t* ptTemp = NULL;
                 if (NULL != this.FWBFS.tMSGHandling.ptNode->ptParent) {
-                    ptTemp = this.FWBFS.tMSGHandling.ptNode->ptParent;
+                    ptTemp = (const vsf_msgt_node_t *)
+                                this.FWBFS.tMSGHandling.ptNode->ptParent;
                 } else {
                     /* no parent, revisit itself again to maitain the same behaviour*/
                     ptTemp = this.FWBFS.tMSGHandling.ptNode;
@@ -575,7 +687,7 @@ fsm_rt_t vsf_msgt_forward_propagate_msg_bfs(vsf_msgt_t* ptObj,
 
                 hwOffset =
                     (uint16_t)((uintptr_t)ptTemp - (uintptr_t)ptNode);
-                if (!VSF_RNG_BUF_SEND_ONE(__bfs_node_fifo_t,
+                if (!vsf_rng_buf_send_one(__bfs_node_fifo_t,
                     &(this.FWBFS.tFIFO),
                     hwOffset)) {
                     RESET_MSGT_FW_BFS_PROPAGATE_MSG_FSM();
@@ -591,7 +703,7 @@ fsm_rt_t vsf_msgt_forward_propagate_msg_bfs(vsf_msgt_t* ptObj,
                 const vsf_msgt_node_t* ptTemp = this.FWBFS.tMSGHandling.ptNode;
                 hwOffset =
                     (uint16_t)((uintptr_t)ptTemp - (uintptr_t)ptNode);
-                if (!VSF_RNG_BUF_SEND_ONE(__bfs_node_fifo_t,
+                if (!vsf_rng_buf_send_one(__bfs_node_fifo_t,
                     &(this.FWBFS.tFIFO),
                     hwOffset)) {
                     RESET_MSGT_FW_BFS_PROPAGATE_MSG_FSM();

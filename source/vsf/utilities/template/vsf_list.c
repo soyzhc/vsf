@@ -21,7 +21,15 @@
 #include <stdbool.h>
 
 /*============================ MACROS ========================================*/
+#if __IS_COMPILER_ARM_COMPILER_6__
+#   pragma clang diagnostic push
+#   pragma clang diagnostic ignored "-Wcast-align"
+#endif
 
+#if __IS_COMPILER_GCC__
+#   pragma GCC diagnostic push
+#   pragma GCC diagnostic ignored "-Wcast-align"
+#endif
 
 /*============================ MACROFIED FUNCTIONS ===========================*/
 
@@ -282,3 +290,11 @@ void __vsf_dlist_remove_imp(vsf_dlist_t *pthis, vsf_dlist_node_t *node)
         pthis->tail = node_prv;
     }
 }
+
+#if __IS_COMPILER_ARM_COMPILER_6__
+#   pragma clang diagnostic pop
+#endif
+
+#if __IS_COMPILER_GCC__
+#   pragma GCC diagnostic pop
+#endif

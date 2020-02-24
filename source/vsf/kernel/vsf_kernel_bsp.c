@@ -20,6 +20,7 @@
 #include "kernel/vsf_kernel_cfg.h"
 
 #if VSF_USE_KERNEL == ENABLED
+#define VSF_EDA_CLASS_INHERIT
 #include "./vsf_kernel_common.h"
 #include "./vsf_eda.h"
 #include "./vsf_evtq.h"
@@ -172,11 +173,10 @@ void vsf_kernel_err_report(vsf_kernel_error_t err)
              */
         default:
             {
-                vsf_gint_state_t gint_state = vsf_disable_interrupt(); 
+                vsf_disable_interrupt(); 
                 while(1);
-                vsf_set_interrupt(gint_state);
             }
-            break;
+            //break;
             
         case VSF_KERNEL_ERR_NONE:
             break;
@@ -189,6 +189,7 @@ void vsf_kernel_err_report(vsf_kernel_error_t err)
     &&  VSF_KERNEL_CFG_SUPPORT_THREAD == ENABLED
 implement_vsf_thread(app_main_thread_t)
 {
+    UNUSED_PARAM(ptThis);
     main();
 }
 #elif   VSF_OS_CFG_MAIN_MODE == VSF_OS_CFG_MAIN_MODE_EDA                        \
@@ -196,6 +197,8 @@ implement_vsf_thread(app_main_thread_t)
         &&  VSF_OS_CFG_ADD_EVTQ_TO_IDLE == ENABLED)
 static void __app_main_evthandler(vsf_eda_t *eda, vsf_evt_t evt)
 {
+    UNUSED_PARAM(eda);
+    UNUSED_PARAM(evt);
     main();
 }
 #endif
@@ -206,7 +209,10 @@ ROOT void __post_vsf_kernel_init(void)
     &&  VSF_KERNEL_CFG_SUPPORT_THREAD == ENABLED
     static NO_INIT app_main_thread_t __app_main;
 #   if VSF_KERNEL_CFG_EDA_SUPPORT_ON_TERMINATE == ENABLED
-    __app_main.on_terminate = NULL;
+    __app_main  .use_as__vsf_thread_t
+                .use_as__vsf_teda_t
+                .use_as__vsf_eda_t
+                .on_terminate = NULL;
 #   endif
     init_vsf_thread(app_main_thread_t, &__app_main, vsf_prio_0);
 #elif   VSF_OS_CFG_MAIN_MODE == VSF_OS_CFG_MAIN_MODE_EDA                        \
@@ -219,13 +225,15 @@ ROOT void __post_vsf_kernel_init(void)
 #   if  VSF_KERNEL_CFG_EDA_SUPPORT_TIMER == ENABLED
     static NO_INIT vsf_teda_t __app_main;
 #       if VSF_KERNEL_CFG_EDA_SUPPORT_ON_TERMINATE == ENABLED
-    __app_main.on_terminate = NULL;
+    __app_main  .use_as__vsf_eda_t
+                .on_terminate = NULL;
 #       endif
     vsf_teda_init_ex(&__app_main, (vsf_eda_cfg_t *)&cfg);
 #   else
     static NO_INIT vsf_eda_t __app_main;
 #       if VSF_KERNEL_CFG_EDA_SUPPORT_ON_TERMINATE == ENABLED
-    __app_main.on_terminate = NULL;
+    __app_main  .use_as__vsf_eda_t
+                .on_terminate = NULL;
 #       endif
     vsf_eda_init_ex(&__app_main, (vsf_eda_cfg_t *)&cfg);
 #   endif

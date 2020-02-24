@@ -21,9 +21,7 @@
 
 #if VSF_USE_LINUX == ENABLED
 
-#include "../../vsf_linux.h"
-
-#include "vsf.h"
+#include <unistd.h>
 #include <sys/time.h>
 
 /*============================ MACROS ========================================*/
@@ -62,6 +60,11 @@ int nanosleep(const struct timespec *requested_time, struct timespec *remaining)
         remaining->tv_sec = 0;
     }
     return 0;
+}
+
+clock_t clock(void)
+{
+    return vsf_systimer_tick_to_us(vsf_timer_get_tick());
 }
 
 int clock_gettime(clockid_t clk_id, struct timespec *tp)

@@ -71,7 +71,7 @@ void vsf_kernel_init(   vsf_pool_block(vsf_eda_frame_pool) *frame_buf_ptr,
 void vsf_kernel_init(   vsf_prio_t highest_prio);
 #endif
 
-extern vsf_err_t __vsf_kernel_start(void);
+extern vsf_err_t vk_kernel_start(void);
 
 #if __VSF_KERNEL_CFG_EVTQ_EN == ENABLED
 SECTION(".text.vsf.kernel.__vsf_set_cur_evtq")
@@ -193,6 +193,11 @@ vsf_err_t __vsf_os_evtq_set_priority(vsf_evtq_t *pthis, vsf_prio_t priority)
     return VSF_ERR_FAIL;
 }
 
+#if __IS_COMPILER_LLVM__ || __IS_COMPILER_ARM_COMPILER_6__
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wsign-compare"
+#endif
+
 vsf_err_t __vsf_os_evtq_init(vsf_evtq_t *pthis)
 {
     uint_fast8_t index = pthis - __vsf_os.res_ptr->evt_queue.queue_array;
@@ -223,6 +228,11 @@ vsf_err_t __vsf_os_evtq_activate(vsf_evtq_t *pthis)
     return VSF_ERR_NONE;
 }
 
+#if __IS_COMPILER_LLVM__ || __IS_COMPILER_ARM_COMPILER_6__
+#pragma clang diagnostic pop
+#endif
+
+
 #ifdef __VSF_OS_CFG_EVTQ_LIST
 vsf_evt_node_t *__vsf_os_alloc_evt_node(void)
 {
@@ -252,6 +262,9 @@ void vsf_forced_sched_unlock(vsf_sched_lock_status_t origlevel)
 static void __vsf_code_region_forced_sched_on_enter(void *pobj, void *plocal)
 {
     vsf_sched_lock_status_t *pstate = (vsf_sched_lock_status_t *)plocal;
+    UNUSED_PARAM(pobj);
+    UNUSED_PARAM(plocal);
+    
     VSF_KERNEL_ASSERT(NULL != plocal);
     (*pstate) = vsf_sched_lock();
 }
@@ -259,6 +272,10 @@ static void __vsf_code_region_forced_sched_on_enter(void *pobj, void *plocal)
 static void __vsf_code_region_forced_sched_on_leave(void *pobj,void *plocal)
 {
     vsf_sched_lock_status_t *pstate = (vsf_sched_lock_status_t *)plocal;
+    
+    UNUSED_PARAM(pobj);
+    UNUSED_PARAM(plocal);
+    
     VSF_KERNEL_ASSERT(NULL != plocal);
     vsf_sched_unlock(*pstate);   
 }
@@ -297,14 +314,14 @@ void __post_vsf_kernel_init(void)
 }
 #endif
 
-void vsf_kernel_os_run_priority(vsf_prio_t priority)
+void __vsf_kernel_os_run_priority(vsf_prio_t priority)
 {
 #if __VSF_KERNEL_CFG_EVTQ_EN == ENABLED
     __vsf_os_evtq_swi_handler(&__vsf_os.res_ptr->evt_queue.queue_array[priority]);
 #endif
 }
 
-void vsf_kernel_os_start(void)
+void __vsf_kernel_os_start(void)
 {
 #ifndef WEAK_VSF_SERVICE_INIT
     vsf_service_init();
@@ -351,7 +368,7 @@ void vsf_kernel_os_start(void)
         vsf_systimer_prio_set(priorit);
     }
 
-    __vsf_kernel_start();
+    vk_kernel_start();
 
 #ifndef WEAK_VSF_HAL_ADVANCE_INIT
     vsf_hal_advance_init();
@@ -368,11 +385,11 @@ void vsf_kernel_os_start(void)
 void __vsf_main_entry(void)
 {
     vsf_hal_init();
-    vsf_kernel_os_start();
+    __vsf_kernel_os_start();
 
     while (1) {
     #if VSF_OS_CFG_ADD_EVTQ_TO_IDLE == ENABLED
-        vsf_kernel_os_run_priority(vsf_prio_0);
+        __vsf_kernel_os_run_priority(vsf_prio_0);
     #endif
     #ifndef WEAK_VSF_PLUG_IN_FOR_KERNEL_DIAGNOSIS
         vsf_plug_in_for_kernel_diagnosis(); //!< customised kernel diagnosis

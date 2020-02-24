@@ -28,6 +28,7 @@ struct usrapp_t {
     struct {
         vk_disp_sdl2_t disp;
         vsf_tgui_color_t color[VSF_TGUI_VER_MAX][VSF_TGUI_HOR_MAX];
+        vsf_tgui_color_t buffer[VSF_TGUI_VER_MAX][VSF_TGUI_HOR_MAX];
     } ui;
 #endif
 };
@@ -61,18 +62,36 @@ void vsf_input_on_touchscreen(vk_touchscreen_evt_t *ts_evt)
         vsf_tgui_on_touchscreen_evt(ts_evt);
     }
 }
+
+extern void vsf_tgui_on_keyboard_evt(vk_keyboard_evt_t* keyboard_evt);
+void vsf_input_on_keyboard(vk_keyboard_evt_t* keyboard_evt)
+{
+    if (keyboard_evt->dev == &usrapp.ui.disp) {
+        vsf_tgui_on_keyboard_evt(keyboard_evt);
+    }
+}
+
+extern void vsf_tgui_on_mouse_evt(vk_mouse_evt_t *mouse_evt);
+void vsf_input_on_mouse(vk_mouse_evt_t *mouse_evt)
+{
+    if (mouse_evt->dev == &usrapp.ui.disp) {
+        vsf_tgui_on_mouse_evt(mouse_evt);
+    }
+    
+}
+
 #endif
 
 // TODO: SDL require that main need argc and argv
 int main(int argc, char *argv[])
 {
-    vsf_trace_init(NULL);
+    vsf_trace_init((vsf_stream_t *)&VSF_DEBUG_STREAM_TX);
     vsf_stdio_init();
 
 #if VSF_USE_UI == ENABLED && VSF_USE_TINY_GUI == ENABLED
 
-	extern void vsf_tgui_bind(vk_disp_t * disp, void* ui_data);
-	vsf_tgui_bind(&(usrapp.ui.disp.use_as__vk_disp_t), &usrapp.ui.color);
+	extern void vsf_tgui_bind(vk_disp_t * disp, void* ui_data, void* buffer);
+	vsf_tgui_bind(&(usrapp.ui.disp.use_as__vk_disp_t), &usrapp.ui.color, &usrapp.ui.buffer);
 
     extern vsf_err_t tgui_demo_init(void);
     tgui_demo_init();

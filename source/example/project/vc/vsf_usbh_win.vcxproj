@@ -144,7 +144,7 @@
     <ClInclude Include="..\..\..\vsf\component\usb\common\class\UVC\vsf_usb_UVC.h" />
     <ClInclude Include="..\..\..\vsf\component\usb\common\class\XB1\vsf_usb_xb1.h" />
     <ClInclude Include="..\..\..\vsf\component\usb\common\usb_common.h" />
-    <ClInclude Include="..\..\..\vsf\component\usb\driver\hcd\libusb_hcd\vsf_libusb_hcd.h" />
+    <ClInclude Include="..\..\..\vsf\component\usb\driver\hcd\winusb_hcd\vsf_winusb_hcd.h" />
     <ClInclude Include="..\..\..\vsf\component\usb\host\class\BTHCI\vsf_usbh_BTHCI.h" />
     <ClInclude Include="..\..\..\vsf\component\usb\host\class\CDC\vsf_usbh_CDC.h" />
     <ClInclude Include="..\..\..\vsf\component\usb\host\class\CDC\vsf_usbh_CDCECM.h" />
@@ -347,7 +347,7 @@
     <ClCompile Include="..\..\..\vsf\component\input\vsf_input.c" />
     <ClCompile Include="..\..\..\vsf\component\ui\disp_drv\sdl2\vsf_disp_drv_sdl2.c" />
     <ClCompile Include="..\..\..\vsf\component\ui\disp_drv\vsf_disp_drv.c" />
-    <ClCompile Include="..\..\..\vsf\component\usb\driver\hcd\libusb_hcd\vsf_libusb_hcd.c" />
+    <ClCompile Include="..\..\..\vsf\component\usb\driver\hcd\winusb_hcd\vsf_winusb_hcd.c" />
     <ClCompile Include="..\..\..\vsf\component\usb\host\class\BTHCI\vsf_usbh_BTHCI.c" />
     <ClCompile Include="..\..\..\vsf\component\usb\host\class\CDC\vsf_usbh_CDC.c" />
     <ClCompile Include="..\..\..\vsf\component\usb\host\class\CDC\vsf_usbh_CDCECM.c" />
@@ -475,13 +475,13 @@
       <PreprocessorDefinitions>__CPU_X86__;__WIN__;LV_CONF_INCLUDE_SIMPLE;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>$(ProjectDir)..\..\..\vsf;$(ProjectDir)..\..\usrapp\usbh_demo_win;$(ProjectDir)..\..\usrapp\usbh_demo_win\config;$(ProjectDir)SDL2\include;$(ProjectDir)libusb;$(ProjectDir)..\..\..\vsf\component\3rd-party\btstack\raw\src;$(ProjectDir)..\..\..\vsf\component\3rd-party\btstack\raw\chipset;$(ProjectDir)..\..\..\vsf\component\3rd-party\littlevgl\6.0\raw;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <AdditionalOptions>-Wno-empty-body -Wno-microsoft-anon-tag -Wno-int-conversion -Wno-int-to-pointer-cast -Wno-missing-braces -Wno-pragma-pack -Wno-deprecated-declarations -Wno-unused-variable  -Wno-bitfield-constant-conversion -Wno-sometimes-uninitialized -Wno-unused-function -Wno-switch -Wno-pointer-integer-compare -fms-extensions %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>-fms-extensions -fmacro-backtrace-limit=0  -Wno-microsoft-include %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(ProjectDir)\SDL2\lib\x86;$(ProjectDir)\libusb\x86;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>SDL2.lib;SDL2main.lib;libusb-1.0.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(ProjectDir)\SDL2\lib\x86;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>SDL2.lib;SDL2main.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -499,8 +499,8 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(ProjectDir)\SDL2\lib\x64;$(ProjectDir)\libusb\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>SDL2.lib;SDL2main.lib;libusb-1.0.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(ProjectDir)\SDL2\lib\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>SDL2.lib;SDL2main.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">

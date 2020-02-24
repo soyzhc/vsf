@@ -53,6 +53,10 @@
 
 /*============================ MACROS ========================================*/
 
+#if VSF_KERNEL_CFG_EDA_SUPPORT_TIMER != ENABLED
+#   error "USBH require VSF_KERNEL_CFG_EDA_SUPPORT_TIMER"
+#endif
+
 #if !defined(VSF_USBH_CFG_EDA_PRIORITY)
 #   define VSF_USBH_CFG_EDA_PRIORITY        vsf_prio_0
 #endif
@@ -515,7 +519,7 @@ extern vsf_err_t vk_usbh_get_descriptor(vk_usbh_t *usbh,
 extern vsf_err_t vk_usbh_get_class_descriptor(vk_usbh_t *usbh,
         vk_usbh_dev_t *dev, uint_fast16_t ifnum, uint_fast8_t type,
         uint_fast8_t id, uint_fast16_t size);
-extern vsf_err_t vk_usbh_set_Zuration(vk_usbh_t *usbh,
+extern vsf_err_t vk_usbh_set_configuration(vk_usbh_t *usbh,
         vk_usbh_dev_t *dev, uint_fast8_t configuration);
 extern vsf_err_t vk_usbh_set_interface(vk_usbh_t *usbh,
         vk_usbh_dev_t *dev, uint_fast8_t ifnum, uint_fast8_t alternate);

@@ -17,10 +17,12 @@
 
 /*============================ INCLUDES ======================================*/
 
+#include "component/vsf_component_cfg.h"
+
+#if VSF_USE_BTSTACK == ENABLED && VSF_USE_USB_HOST == ENABLED && VSF_USE_USB_HOST_BTHCI == ENABLED
+
 // TODO: use dedicated include
 #include "vsf.h"
-
-#if VSF_USE_USB_HOST == ENABLED && VSF_USE_USB_HOST_BTHCI == ENABLED
 
 #include "btstack_config.h"
 #include "btstack_debug.h"
